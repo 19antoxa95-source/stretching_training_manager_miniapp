@@ -206,6 +206,27 @@
         tg.ready();
         tg.expand();
 
+        // Get user ID for multi-user support
+        let currentUserId = null;
+        
+        // Try to get Telegram user ID first
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            currentUserId = `tg_${tg.initDataUnsafe.user.id}`;
+            console.log('Telegram User ID:', currentUserId);
+        } else {
+            // For web users, create or get session ID
+            currentUserId = localStorage.getItem('web_user_id');
+            if (!currentUserId) {
+                currentUserId = `web_${Math.random().toString(36).substr(2, 12)}`;
+                localStorage.setItem('web_user_id', currentUserId);
+            }
+            console.log('Web User ID:', currentUserId);
+        }
+        
+        // Store globally for all API calls
+        window.currentUserId = currentUserId;
+        console.log('Current User ID:', currentUserId);
+
         // Language system
         const translations = {
             en: {
@@ -406,19 +427,33 @@
             }
         }
 
+        // Helper function to include user ID in all API calls
+        function getHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'X-User-Id': window.currentUserId
+            };
+        }
+
         async function loadStudios() {
-            const response = await fetch('/api/studios');
+            const response = await fetch('/api/studios', {
+                headers: { 'X-User-Id': window.currentUserId }
+            });
             studios = await response.json();
             updateStudioDropdowns();
         }
 
         async function loadSessions() {
-            const response = await fetch('/api/sessions');
+            const response = await fetch('/api/sessions', {
+                headers: { 'X-User-Id': window.currentUserId }
+            });
             sessions = await response.json();
         }
 
         async function loadStats() {
-            const response = await fetch('/api/stats');
+            const response = await fetch('/api/stats', {
+                headers: { 'X-User-Id': window.currentUserId }
+            });
             stats = await response.json();
         }
 
@@ -657,7 +692,10 @@
             
             const response = await fetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Id': window.currentUserId
+                },
                 body: JSON.stringify(data)
             });
             
@@ -686,7 +724,7 @@
                 
                 const response = await fetch(`/api/sessions/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-User-Id': window.currentUserId },
                     body: JSON.stringify(data)
                 });
                 
@@ -709,7 +747,7 @@
                 
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-User-Id': window.currentUserId },
                     body: JSON.stringify(data)
                 });
                 
@@ -718,7 +756,7 @@
                     for (let i = 1; i <= numClients; i++) {
                         await fetch(`/api/sessions/${session.id}/attendees`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json', 'X-User-Id': window.currentUserId },
                             body: JSON.stringify({ name: `Client ${i}` })
                         });
                     }
@@ -732,7 +770,7 @@
         async function markPaid(id) {
             tg.HapticFeedback.impactOccurred('medium');
             if (confirm(t('markPaidConfirm'))) {
-                await fetch(`/api/sessions/${id}/mark-paid`, { method: 'PUT' });
+                await fetch(`/api/sessions/${id}/mark-paid`, { method: 'PUT' , headers: { 'X-User-Id': window.currentUserId } });
                 await loadData();
                 tg.showAlert(t('markedPaid'));
             }
@@ -741,7 +779,10 @@
         async function deleteSession(id) {
             tg.HapticFeedback.impactOccurred('heavy');
             if (confirm(t('confirmDelete'))) {
-                const response = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+                const response = await fetch(`/api/sessions/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-User-Id': window.currentUserId }
+                });
                 if (response.ok) {
                     await loadData();
                     tg.showAlert(t('sessionDeleted'));
@@ -752,7 +793,10 @@
         async function deleteStudio(id, name) {
             tg.HapticFeedback.impactOccurred('heavy');
             if (confirm(`${t('confirmDeleteStudio')} "${name}"?`)) {
-                const response = await fetch(`/api/studios/${id}`, { method: 'DELETE' });
+                const response = await fetch(`/api/studios/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-User-Id': window.currentUserId }
+                });
                 const result = await response.json();
                 if (response.ok) {
                     await loadData();
@@ -776,7 +820,9 @@
             if (dateTo) params.push(`dateTo=${dateTo}`);
             url += params.join('&');
 
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: { 'X-User-Id': window.currentUserId }
+            });
             filteredStats = await response.json();
             renderFilteredStats();
         }
