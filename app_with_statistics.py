@@ -46,6 +46,7 @@ def init_db():
                   payment_per_client REAL NOT NULL,
                   minimum_payment REAL NOT NULL DEFAULT 0,
                   start_count_from INTEGER NOT NULL DEFAULT 1,
+                  payment_individual REAL NOT NULL DEFAULT 0,
                   color TEXT DEFAULT '#FF6B6B')''')
     
     c.execute('''CREATE TABLE IF NOT EXISTS training_sessions
@@ -85,6 +86,15 @@ def init_db():
         c.execute("ALTER TABLE training_sessions ADD COLUMN user_id TEXT DEFAULT 'legacy_user'")
         c.execute("UPDATE training_sessions SET user_id = 'legacy_user' WHERE user_id IS NULL")
         print("Migration complete for training_sessions!")
+    
+    # Migration: Add payment_individual to existing studios if not present
+    try:
+        c.execute("SELECT payment_individual FROM studios LIMIT 1")
+    except sqlite3.OperationalError:
+        # Column doesn't exist, need to migrate
+        print("Migrating database: adding payment_individual to studios...")
+        c.execute("ALTER TABLE studios ADD COLUMN payment_individual REAL DEFAULT 0")
+        print("Migration complete for payment_individual!")
     
     conn.commit()
     conn.close()
@@ -130,6 +140,7 @@ def get_studios():
         'paymentPerClient': s['payment_per_client'],
         'minimumPayment': s['minimum_payment'],
         'startCountFrom': s['start_count_from'],
+        'paymentIndividual': s['payment_individual'],
         'color': s['color']
     } for s in studios])
 
@@ -139,10 +150,10 @@ def add_studio():
     data = request.json
     conn = get_db()
     c = conn.cursor()
-    c.execute('''INSERT INTO studios (user_id, name, payment_per_client, minimum_payment, start_count_from, color) 
-                 VALUES (?, ?, ?, ?, ?, ?)''',
+    c.execute('''INSERT INTO studios (user_id, name, payment_per_client, minimum_payment, start_count_from, payment_individual, color) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
               (user_id, data['name'], data['paymentPerClient'], data['minimumPayment'], 
-               data['startCountFrom'], data.get('color', '#FF6B6B')))
+               data['startCountFrom'], data.get('paymentIndividual', 0), data.get('color', '#FF6B6B')))
     studio_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -152,6 +163,7 @@ def add_studio():
         'paymentPerClient': data['paymentPerClient'],
         'minimumPayment': data['minimumPayment'],
         'startCountFrom': data['startCountFrom'],
+        'paymentIndividual': data.get('paymentIndividual', 0),
         'color': data.get('color', '#FF6B6B')
     })
 
@@ -196,10 +208,10 @@ def update_studio(studio_id):
     
     # Update the studio
     c.execute('''UPDATE studios 
-                 SET name = ?, payment_per_client = ?, minimum_payment = ?, start_count_from = ?, color = ?
+                 SET name = ?, payment_per_client = ?, minimum_payment = ?, start_count_from = ?, payment_individual = ?, color = ?
                  WHERE id = ? AND user_id = ?''',
               (data['name'], data['paymentPerClient'], data['minimumPayment'], 
-               data['startCountFrom'], data['color'], studio_id, user_id))
+               data['startCountFrom'], data.get('paymentIndividual', 0), data['color'], studio_id, user_id))
     conn.commit()
     conn.close()
     
@@ -209,6 +221,7 @@ def update_studio(studio_id):
         'paymentPerClient': data['paymentPerClient'],
         'minimumPayment': data['minimumPayment'],
         'startCountFrom': data['startCountFrom'],
+        'paymentIndividual': data.get('paymentIndividual', 0),
         'color': data['color']
     })
 
