@@ -1,1 +1,1 @@
-web: python app_with_statistics.py
+web: gunicorn app_with_statistics:app --bind 0.0.0.0:$PORT
