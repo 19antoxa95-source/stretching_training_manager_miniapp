@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stretch Studio Manager</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--tg-theme-bg-color, #ffffff); color: var(--tg-theme-text-color, #000000); padding: 0; margin: 0; overflow-x: hidden; }
+        .header { background: var(--tg-theme-secondary-bg-color, #f4f4f5); padding: 12px 16px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--tg-theme-hint-color, #e5e5e5); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 18px; font-weight: 600; color: var(--tg-theme-text-color, #000000); }
+        .lang-switch { background: var(--tg-theme-button-color, #3390ec); color: var(--tg-theme-button-text-color, #ffffff); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .tabs { display: flex; background: var(--tg-theme-secondary-bg-color, #f4f4f5); border-bottom: 1px solid var(--tg-theme-hint-color, #e5e5e5); overflow-x: auto; position: sticky; top: 45px; z-index: 99; -webkit-overflow-scrolling: touch; }
+        .tab-button { flex: 0 0 auto; padding: 12px 16px; background: transparent; border: none; color: var(--tg-theme-hint-color, #999999); font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .tab-button.active { color: var(--tg-theme-button-color, #3390ec); border-bottom-color: var(--tg-theme-button-color, #3390ec); }
+        .content { padding: 12px; padding-bottom: 80px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: var(--tg-theme-secondary-bg-color, #ffffff); border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: var(--tg-theme-text-color, #000000); }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+        .stat-card { background: var(--tg-theme-bg-color, #ffffff); padding: 12px; border-radius: 8px; border: 1px solid var(--tg-theme-hint-color, #e5e5e5); }
+        .stat-value { font-size: 24px; font-weight: 700; color: var(--tg-theme-button-color, #3390ec); margin-bottom: 4px; }
+        .stat-label { font-size: 12px; color: var(--tg-theme-hint-color, #999999); }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--tg-theme-text-color, #000000); }
+        .input-field { width: 100%; padding: 12px; border: 1px solid var(--tg-theme-hint-color, #e5e5e5); border-radius: 8px; font-size: 16px; background: var(--tg-theme-bg-color, #ffffff); color: var(--tg-theme-text-color, #000000); }
+        .input-field:focus { outline: none; border-color: var(--tg-theme-button-color, #3390ec); }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn:active { opacity: 0.7; }
+        .btn-primary { background: var(--tg-theme-button-color, #3390ec); color: var(--tg-theme-button-text-color, #ffffff); }
+        .btn-secondary { background: var(--tg-theme-secondary-bg-color, #f4f4f5); color: var(--tg-theme-text-color, #000000); border: 1px solid var(--tg-theme-hint-color, #e5e5e5); }
+        .session-item { background: var(--tg-theme-bg-color, #ffffff); padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--tg-theme-hint-color, #e5e5e5); }
+        .session-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+        .session-title { font-size: 16px; font-weight: 600; color: var(--tg-theme-text-color, #000000); }
+        .session-amount { font-size: 18px; font-weight: 700; color: var(--tg-theme-button-color, #3390ec); }
+        .session-info { font-size: 13px; color: var(--tg-theme-hint-color, #999999); line-height: 1.5; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 4px; margin-bottom: 4px; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-group { background: #e7f3ff; color: #0066cc; }
+        .badge-individual { background: #ffe7f3; color: #cc0066; }
+        .studio-item { background: var(--tg-theme-bg-color, #ffffff); padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--tg-theme-hint-color, #e5e5e5); border-left: 4px solid; }
+        .studio-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--tg-theme-text-color, #000000); }
+        .studio-info { font-size: 13px; color: var(--tg-theme-hint-color, #999999); line-height: 1.6; }
+        .action-buttons { display: flex; gap: 8px; margin-top: 8px; }
+        .icon-btn { flex: 1; padding: 10px; border: 1px solid var(--tg-theme-hint-color, #e5e5e5); border-radius: 8px; background: var(--tg-theme-secondary-bg-color, #f4f4f5); color: var(--tg-theme-text-color, #000000); font-size: 14px; cursor: pointer; }
+        .icon-btn:active { opacity: 0.7; }
+        .icon-btn.danger { color: #dc3545; border-color: #dc3545; }
+        .filter-section { background: var(--tg-theme-secondary-bg-color, #f4f4f5); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #999999); }
+        .empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .payment-preview { background: var(--tg-theme-button-color, #3390ec); color: var(--tg-theme-button-text-color, #ffffff); padding: 16px; border-radius: 8px; margin: 12px 0; }
+        .payment-preview-amount { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .payment-preview-text { font-size: 13px; opacity: 0.9; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--tg-theme-bg-color, #ffffff); z-index: 1000; display: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .modal.active { display: block; }
+        .modal-header { position: sticky; top: 0; background: var(--tg-theme-secondary-bg-color, #f4f4f5); padding: 12px 16px; border-bottom: 1px solid var(--tg-theme-hint-color, #e5e5e5); display: flex; justify-content: space-between; align-items: center; z-index: 1001; }
+        .modal-title { font-size: 18px; font-weight: 600; color: var(--tg-theme-text-color, #000000); }
+        .close-btn { background: none; border: none; font-size: 24px; color: var(--tg-theme-hint-color, #999999); cursor: pointer; padding: 0; width: 32px; height: 32px; }
+        .modal-content { padding: 16px; padding-bottom: 80px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="appTitle">🏋️ Stretch Studio Manager</h1>
+        <button class="lang-switch" onclick="toggleLanguage()" id="langBtn">RU</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="showTab('dashboard')" data-lang-key="tabDashboard">📊 Dashboard</button>
+        <button class="tab-button" onclick="showTab('statistics')" data-lang-key="tabStats">📈 Stats</button>
+        <button class="tab-button" onclick="showTab('sessions')" data-lang-key="tabSessions">🏋️ Sessions</button>
+        <button class="tab-button" onclick="showTab('studios')" data-lang-key="tabStudios">🏢 Studios</button>
+    </div>
+
+    <div class="content">
+        <div id="dashboard" class="tab-content active">
+            <div class="stats-grid" id="dashboardStats"></div>
+            <div class="card">
+                <h2 class="section-title" data-lang-key="recentSessions">Recent Sessions</h2>
+                <div id="recentSessions"></div>
+            </div>
+        </div>
+
+        <div id="statistics" class="tab-content">
+            <div class="card">
+                <h2 class="section-title" data-lang-key="filterStats">Filter Statistics</h2>
+                <div class="filter-section">
+                    <div class="form-group">
+                        <label data-lang-key="labelStudio">Studio</label>
+                        <select class="input-field" id="filterStudio">
+                            <option value="" data-lang-key="allStudios">All Studios</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-lang-key="labelFromDate">From Date</label>
+                        <input type="date" class="input-field" id="filterDateFrom">
+                    </div>
+                    <div class="form-group">
+                        <label data-lang-key="labelToDate">To Date</label>
+                        <input type="date" class="input-field" id="filterDateTo">
+                    </div>
+                    <button class="btn btn-primary" onclick="applyFilters()" data-lang-key="btnApplyFilters">🔍 Apply Filters</button>
+                </div>
+            </div>
+            <div class="stats-grid" id="filteredStats"></div>
+            <div id="filteredSessionsList"></div>
+        </div>
+
+        <div id="sessions" class="tab-content">
+            <div class="card">
+                <button class="btn btn-primary" onclick="openAddSession()" data-lang-key="btnAddSession">➕ Add Training Session</button>
+            </div>
+            <div id="sessionsList"></div>
+        </div>
+
+        <div id="studios" class="tab-content">
+            <div class="card">
+                <button class="btn btn-primary" onclick="openAddStudio()" data-lang-key="btnAddStudio">➕ Add New Studio</button>
+            </div>
+            <div id="studiosList"></div>
+        </div>
+    </div>
+
+    <div id="studioModal" class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="studioModalTitle" data-lang-key="modalAddStudio">Add Studio</h2>
+            <button class="close-btn" onclick="closeStudioModal()">×</button>
+        </div>
+        <div class="modal-content">
+            <form id="studioForm">
+                <input type="hidden" id="studioId">
+                <div class="form-group">
+                    <label data-lang-key="labelStudioName">Studio Name</label>
+                    <input type="text" class="input-field" id="studioName" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelMinPayment">Minimum Payment (₾) - Group</label>
+                    <input type="number" class="input-field" id="studioMinPayment" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelPaymentPerClient">Payment Per Client (₾) - Group</label>
+                    <input type="number" class="input-field" id="studioPayment" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelStartCount">Start Count From</label>
+                    <input type="number" class="input-field" id="studioStartCount" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelIndividualPayment">Payment for Individual (₾)</label>
+                    <input type="number" class="input-field" id="studioIndividual" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelColor">Color</label>
+                    <input type="color" class="input-field" id="studioColor" value="#3390ec">
+                </div>
+                <button type="submit" class="btn btn-primary" data-lang-key="btnSaveStudio">💾 Save Studio</button>
+                <button type="button" class="btn btn-secondary" onclick="closeStudioModal()" data-lang-key="btnCancel">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="sessionModal" class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="sessionModalTitle" data-lang-key="modalAddSession">Add Session</h2>
+            <button class="close-btn" onclick="closeSessionModal()">×</button>
+        </div>
+        <div class="modal-content">
+            <form id="sessionForm">
+                <input type="hidden" id="sessionId">
+                <div class="form-group">
+                    <label data-lang-key="labelDate">Date</label>
+                    <input type="date" class="input-field" id="sessionDate" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelTime">Time</label>
+                    <input type="time" class="input-field" id="sessionTime" required>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelStudio">Studio</label>
+                    <select class="input-field" id="sessionStudio" required></select>
+                </div>
+                <div class="form-group">
+                    <label data-lang-key="labelSessionType">Session Type</label>
+                    <select class="input-field" id="sessionType" required>
+                        <option value="" data-lang-key="selectType">Select type</option>
+                        <option value="Group" data-lang-key="optionGroup">Group Training</option>
+                        <option value="Individual" data-lang-key="optionIndividual">Individual</option>
+                    </select>
+                </div>
+                <div class="form-group" id="clientsGroup">
+                    <label data-lang-key="labelNumClients">Number of Clients</label>
+                    <input type="number" class="input-field" id="sessionClients" min="0" required>
+                </div>
+                <div id="paymentPreview" style="display:none;"></div>
+                <button type="submit" class="btn btn-primary" data-lang-key="btnSaveSession">💾 Save Session</button>
+                <button type="button" class="btn btn-secondary" onclick="closeSessionModal()" data-lang-key="btnCancel">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Language system
+        const translations = {
+            en: {
+                appTitle: '🏋️ Stretch Studio Manager',
+                tabDashboard: '📊 Dashboard',
+                tabStats: '📈 Stats',
+                tabSessions: '🏋️ Sessions',
+                tabStudios: '🏢 Studios',
+                recentSessions: 'Recent Sessions',
+                filterStats: 'Filter Statistics',
+                labelStudio: 'Studio',
+                allStudios: 'All Studios',
+                labelFromDate: 'From Date',
+                labelToDate: 'To Date',
+                btnApplyFilters: '🔍 Apply Filters',
+                btnAddSession: '➕ Add Training Session',
+                btnAddStudio: '➕ Add New Studio',
+                modalAddStudio: 'Add Studio',
+                modalEditStudio: 'Edit Studio',
+                modalAddSession: 'Add Session',
+                modalEditSession: 'Edit Session',
+                labelStudioName: 'Studio Name',
+                labelMinPayment: 'Minimum Payment (₾) - Group',
+                labelPaymentPerClient: 'Payment Per Client (₾) - Group',
+                labelStartCount: 'Start Count From',
+                labelIndividualPayment: 'Payment for Individual (₾)',
+                labelColor: 'Color',
+                btnSaveStudio: '💾 Save Studio',
+                btnSaveSession: '💾 Save Session',
+                btnCancel: 'Cancel',
+                labelDate: 'Date',
+                labelTime: 'Time',
+                labelSessionType: 'Session Type',
+                selectType: 'Select type',
+                optionGroup: 'Group Training',
+                optionIndividual: 'Individual',
+                labelNumClients: 'Number of Clients',
+                statSessions: 'Total Sessions',
+                statPaid: 'Paid Revenue',
+                statPending: 'Pending',
+                statClients: 'Clients',
+                statGroup: 'Group',
+                statIndividual: 'Individual',
+                noSessions: 'No sessions yet',
+                noStudios: 'No studios yet',
+                noTrainingSessions: 'No training sessions yet',
+                btnEdit: '✏️ Edit',
+                btnDelete: '🗑️ Delete',
+                btnPaid: '✓ Paid',
+                badgePaid: '✓ Paid',
+                badgePending: '⏳ Pending',
+                badgeGroup: '👥 Group',
+                badgeIndividual: '👤 Individual',
+                confirmDelete: 'Delete this session?',
+                confirmDeleteStudio: 'Delete',
+                sessionDeleted: 'Session deleted!',
+                studioDeleted: 'Studio deleted!',
+                sessionUpdated: 'Session updated!',
+                studioUpdated: 'Studio updated!',
+                sessionAdded: 'Session added!',
+                studioAdded: 'Studio added!',
+                markedPaid: 'Marked as paid!',
+                markPaidConfirm: 'Mark this session as paid?',
+                clients: 'clients',
+                filteredSessions: 'Filtered Sessions',
+                noMatchingSessions: 'No sessions match filters',
+                groupMin: 'Group - Min',
+                groupPerClient: 'Group - Per client',
+                startFrom: 'Start from',
+                individual: 'Individual'
+            },
+            ru: {
+                appTitle: '🏋️ Менеджер Студии',
+                tabDashboard: '📊 Панель',
+                tabStats: '📈 Статистика',
+                tabSessions: '🏋️ Занятия',
+                tabStudios: '🏢 Студии',
+                recentSessions: 'Последние занятия',
+                filterStats: 'Фильтр статистики',
+                labelStudio: 'Студия',
+                allStudios: 'Все студии',
+                labelFromDate: 'С даты',
+                labelToDate: 'По дату',
+                btnApplyFilters: '🔍 Применить фильтры',
+                btnAddSession: '➕ Добавить занятие',
+                btnAddStudio: '➕ Добавить студию',
+                modalAddStudio: 'Добавить студию',
+                modalEditStudio: 'Редактировать студию',
+                modalAddSession: 'Добавить занятие',
+                modalEditSession: 'Редактировать занятие',
+                labelStudioName: 'Название студии',
+                labelMinPayment: 'Минимальная оплата (₾) - Группа',
+                labelPaymentPerClient: 'Оплата за клиента (₾) - Группа',
+                labelStartCount: 'Начинать отсчет с',
+                labelIndividualPayment: 'Оплата индивидуальной (₾)',
+                labelColor: 'Цвет',
+                btnSaveStudio: '💾 Сохранить студию',
+                btnSaveSession: '💾 Сохранить занятие',
+                btnCancel: 'Отмена',
+                labelDate: 'Дата',
+                labelTime: 'Время',
+                labelSessionType: 'Тип занятия',
+                selectType: 'Выберите тип',
+                optionGroup: 'Групповая тренировка',
+                optionIndividual: 'Индивидуальная',
+                labelNumClients: 'Количество клиентов',
+                statSessions: 'Всего занятий',
+                statPaid: 'Оплачено',
+                statPending: 'В ожидании',
+                statClients: 'Клиентов',
+                statGroup: 'Групповых',
+                statIndividual: 'Индивид.',
+                noSessions: 'Пока нет занятий',
+                noStudios: 'Пока нет студий',
+                noTrainingSessions: 'Пока нет тренировок',
+                btnEdit: '✏️ Изменить',
+                btnDelete: '🗑️ Удалить',
+                btnPaid: '✓ Оплачено',
+                badgePaid: '✓ Оплачено',
+                badgePending: '⏳ Ожидание',
+                badgeGroup: '👥 Группа',
+                badgeIndividual: '👤 Индивид.',
+                confirmDelete: 'Удалить это занятие?',
+                confirmDeleteStudio: 'Удалить',
+                sessionDeleted: 'Занятие удалено!',
+                studioDeleted: 'Студия удалена!',
+                sessionUpdated: 'Занятие обновлено!',
+                studioUpdated: 'Студия обновлена!',
+                sessionAdded: 'Занятие добавлено!',
+                studioAdded: 'Студия добавлена!',
+                markedPaid: 'Отмечено как оплачено!',
+                markPaidConfirm: 'Отметить как оплаченное?',
+                clients: 'клиентов',
+                filteredSessions: 'Отфильтрованные занятия',
+                noMatchingSessions: 'Нет подходящих занятий',
+                groupMin: 'Группа - Мин',
+                groupPerClient: 'Группа - За клиента',
+                startFrom: 'Начинать с',
+                individual: 'Индивидуальная'
+            }
+        };
+
+        let currentLang = 'en';
+        let studios = [], sessions = [], stats = {}, filteredStats = {};
+        let editingStudio = null, editingSession = null;
+
+        // Detect language from Telegram
+        function detectLanguage() {
+            const tgLang = tg.initDataUnsafe?.user?.language_code;
+            if (tgLang === 'ru') {
+                currentLang = 'ru';
+            } else {
+                const saved = localStorage.getItem('app_language');
+                currentLang = saved || 'en';
+            }
+            updateLanguage();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ru' : 'en';
+            localStorage.setItem('app_language', currentLang);
+            updateLanguage();
+            renderAll();
+        }
+
+        function t(key) {
+            return translations[currentLang][key] || translations.en[key] || key;
+        }
+
+        function updateLanguage() {
+            document.getElementById('langBtn').textContent = currentLang === 'en' ? 'RU' : 'EN';
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (el.tagName === 'INPUT' && el.type === 'submit' || el.tagName === 'BUTTON') {
+                    el.textContent = t(key);
+                } else if (el.tagName === 'OPTION') {
+                    el.textContent = t(key);
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function loadData() {
+            try {
+                await Promise.all([loadStudios(), loadSessions(), loadStats()]);
+                renderAll();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                tg.showAlert('Error loading data');
+            }
+        }
+
+        async function loadStudios() {
+            const response = await fetch('/api/studios');
+            studios = await response.json();
+            updateStudioDropdowns();
+        }
+
+        async function loadSessions() {
+            const response = await fetch('/api/sessions');
+            sessions = await response.json();
+        }
+
+        async function loadStats() {
+            const response = await fetch('/api/stats');
+            stats = await response.json();
+        }
+
+        function updateStudioDropdowns() {
+            const dropdowns = ['sessionStudio', 'filterStudio'];
+            dropdowns.forEach(id => {
+                const select = document.getElementById(id);
+                const currentValue = select.value;
+                select.innerHTML = id === 'filterStudio' ? 
+                    `<option value="">${t('allStudios')}</option>` : 
+                    `<option value="">${t('labelStudio')}</option>`;
+                studios.forEach(studio => {
+                    const option = document.createElement('option');
+                    option.value = studio.id;
+                    option.textContent = studio.name;
+                    select.appendChild(option);
+                });
+                select.value = currentValue;
+            });
+        }
+
+        function renderAll() {
+            renderDashboardStats();
+            renderRecentSessions();
+            renderSessionsList();
+            renderStudiosList();
+        }
+
+        function renderDashboardStats() {
+            document.getElementById('dashboardStats').innerHTML = `
+                <div class="stat-card"><div class="stat-value">${stats.totalSessions || 0}</div><div class="stat-label">${t('statSessions')}</div></div>
+                <div class="stat-card"><div class="stat-value">₾${stats.paidRevenue || 0}</div><div class="stat-label">${t('statPaid')}</div></div>
+                <div class="stat-card"><div class="stat-value">₾${stats.pendingRevenue || 0}</div><div class="stat-label">${t('statPending')}</div></div>
+                <div class="stat-card"><div class="stat-value">${stats.totalAttendees || 0}</div><div class="stat-label">${t('statClients')}</div></div>
+            `;
+        }
+
+        function renderRecentSessions() {
+            const div = document.getElementById('recentSessions');
+            const recent = sessions.slice(-5).reverse();
+            if (recent.length === 0) {
+                div.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><p>${t('noSessions')}</p></div>`;
+                return;
+            }
+            div.innerHTML = recent.map(s => {
+                const studio = studios.find(st => st.id === s.studioId);
+                const isGroup = s.sessionType === 'Group';
+                return `<div class="session-item">
+                    <div class="session-header">
+                        <div>
+                            <div class="session-title">${isGroup ? t('optionGroup') : t('optionIndividual')}</div>
+                            <span class="badge ${isGroup ? 'badge-group' : 'badge-individual'}">${isGroup ? '👥' : '👤'}</span>
+                            <span class="badge ${s.paid ? 'badge-success' : 'badge-warning'}">${s.paid ? '✓' : '⏳'}</span>
+                        </div>
+                        <div class="session-amount">₾${s.payment}</div>
+                    </div>
+                    <div class="session-info">${s.date} • ${studio?.name || 'Unknown'} • ${s.attendees.length} ${t('clients')}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderSessionsList() {
+            const div = document.getElementById('sessionsList');
+            if (sessions.length === 0) {
+                div.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-state-icon">🏋️</div><p>${t('noTrainingSessions')}</p></div></div>`;
+                return;
+            }
+            const sorted = [...sessions].sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time));
+            div.innerHTML = sorted.map(s => {
+                const studio = studios.find(st => st.id === s.studioId);
+                const isGroup = s.sessionType === 'Group';
+                return `<div class="card session-item">
+                    <div class="session-header">
+                        <div>
+                            <div class="session-title">${isGroup ? t('optionGroup') : t('optionIndividual')}</div>
+                            <span class="badge ${isGroup ? 'badge-group' : 'badge-individual'}">${isGroup ? t('badgeGroup') : t('badgeIndividual')}</span>
+                            <span class="badge ${s.paid ? 'badge-success' : 'badge-warning'}">${s.paid ? t('badgePaid') : t('badgePending')}</span>
+                        </div>
+                        <div class="session-amount">₾${s.payment}</div>
+                    </div>
+                    <div class="session-info">
+                        📅 ${s.date} ${s.time}<br>
+                        🏢 ${studio?.name || 'Unknown'}<br>
+                        👥 ${s.attendees.length} ${t('clients')}
+                    </div>
+                    <div class="action-buttons">
+                        <button class="icon-btn" onclick="openEditSession(${s.id})">${t('btnEdit')}</button>
+                        ${!s.paid ? `<button class="icon-btn" onclick="markPaid(${s.id})">${t('btnPaid')}</button>` : ''}
+                        <button class="icon-btn danger" onclick="deleteSession(${s.id})">${t('btnDelete')}</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderStudiosList() {
+            const div = document.getElementById('studiosList');
+            if (studios.length === 0) {
+                div.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-state-icon">🏢</div><p>${t('noStudios')}</p></div></div>`;
+                return;
+            }
+            div.innerHTML = studios.map(s => `<div class="card studio-item" style="border-left-color: ${s.color}">
+                <div class="studio-name">${s.name}</div>
+                <div class="studio-info">
+                    👥 ${t('groupMin')}: ₾${s.minimumPayment}, ${t('groupPerClient')}: ₾${s.paymentPerClient}<br>
+                    ${t('startFrom')}: ${s.startCountFrom} ${t('clients')}<br>
+                    👤 ${t('individual')}: ₾${s.paymentIndividual}
+                </div>
+                <div class="action-buttons">
+                    <button class="icon-btn" onclick="openEditStudio(${s.id})">${t('btnEdit')}</button>
+                    <button class="icon-btn danger" onclick="deleteStudio(${s.id}, '${s.name.replace(/'/g, "\\'")}')>${t('btnDelete')}</button>
+                </div>
+            </div>`).join('');
+        }
+
+        function openAddStudio() {
+            editingStudio = null;
+            document.getElementById('studioModalTitle').textContent = t('modalAddStudio');
+            document.getElementById('studioForm').reset();
+            document.getElementById('studioId').value = '';
+            document.getElementById('studioModal').classList.add('active');
+        }
+
+        function openEditStudio(id) {
+            const studio = studios.find(s => s.id === id);
+            if (!studio) return;
+            editingStudio = studio;
+            document.getElementById('studioModalTitle').textContent = t('modalEditStudio');
+            document.getElementById('studioId').value = studio.id;
+            document.getElementById('studioName').value = studio.name;
+            document.getElementById('studioMinPayment').value = studio.minimumPayment;
+            document.getElementById('studioPayment').value = studio.paymentPerClient;
+            document.getElementById('studioStartCount').value = studio.startCountFrom;
+            document.getElementById('studioIndividual').value = studio.paymentIndividual;
+            document.getElementById('studioColor').value = studio.color;
+            document.getElementById('studioModal').classList.add('active');
+        }
+
+        function closeStudioModal() {
+            document.getElementById('studioModal').classList.remove('active');
+        }
+
+        function openAddSession() {
+            editingSession = null;
+            document.getElementById('sessionModalTitle').textContent = t('modalAddSession');
+            document.getElementById('sessionForm').reset();
+            document.getElementById('sessionId').value = '';
+            document.getElementById('sessionDate').valueAsDate = new Date();
+            document.getElementById('clientsGroup').style.display = 'block';
+            document.getElementById('paymentPreview').style.display = 'none';
+            document.getElementById('sessionModal').classList.add('active');
+        }
+
+        function openEditSession(id) {
+            const session = sessions.find(s => s.id === id);
+            if (!session) return;
+            editingSession = session;
+            document.getElementById('sessionModalTitle').textContent = t('modalEditSession');
+            document.getElementById('sessionId').value = session.id;
+            document.getElementById('sessionDate').value = session.date;
+            document.getElementById('sessionTime').value = session.time;
+            document.getElementById('sessionStudio').value = session.studioId;
+            document.getElementById('sessionType').value = session.sessionType;
+            document.getElementById('clientsGroup').style.display = session.sessionType === 'Group' ? 'block' : 'none';
+            document.getElementById('sessionModal').classList.add('active');
+        }
+
+        function closeSessionModal() {
+            document.getElementById('sessionModal').classList.remove('active');
+        }
+
+        document.getElementById('sessionType').addEventListener('change', function() {
+            const clientsGroup = document.getElementById('clientsGroup');
+            const clientsInput = document.getElementById('sessionClients');
+            if (this.value === 'Individual') {
+                clientsGroup.style.display = 'none';
+                clientsInput.required = false;
+                clientsInput.value = '1';
+            } else {
+                clientsGroup.style.display = 'block';
+                clientsInput.required = true;
+            }
+            updatePaymentPreview();
+        });
+
+        function updatePaymentPreview() {
+            const studioId = parseInt(document.getElementById('sessionStudio').value);
+            const sessionType = document.getElementById('sessionType').value;
+            const numClients = parseInt(document.getElementById('sessionClients').value) || 1;
+            const preview = document.getElementById('paymentPreview');
+            
+            if (!studioId || !sessionType) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            const studio = studios.find(s => s.id === studioId);
+            if (!studio) return;
+            
+            let payment = 0, text = '';
+            if (sessionType === 'Individual') {
+                payment = studio.paymentIndividual;
+                text = t('optionIndividual');
+            } else {
+                if (numClients <= studio.startCountFrom) {
+                    payment = studio.minimumPayment;
+                    text = `${numClients} ≤ ${studio.startCountFrom}`;
+                } else {
+                    payment = numClients * studio.paymentPerClient;
+                    text = `${numClients} × ₾${studio.paymentPerClient}`;
+                }
+            }
+            
+            preview.innerHTML = `<div class="payment-preview"><div class="payment-preview-amount">₾${payment.toFixed(2)}</div><div class="payment-preview-text">${text}</div></div>`;
+            preview.style.display = 'block';
+        }
+
+        document.getElementById('sessionStudio').addEventListener('change', updatePaymentPreview);
+        document.getElementById('sessionClients').addEventListener('input', updatePaymentPreview);
+
+        document.getElementById('studioForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            tg.HapticFeedback.impactOccurred('light');
+            
+            const id = document.getElementById('studioId').value;
+            const data = {
+                name: document.getElementById('studioName').value,
+                minimumPayment: parseFloat(document.getElementById('studioMinPayment').value),
+                paymentPerClient: parseFloat(document.getElementById('studioPayment').value),
+                startCountFrom: parseInt(document.getElementById('studioStartCount').value),
+                paymentIndividual: parseFloat(document.getElementById('studioIndividual').value),
+                color: document.getElementById('studioColor').value
+            };
+            
+            const url = id ? `/api/studios/${id}` : '/api/studios';
+            const method = id ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                closeStudioModal();
+                await loadData();
+                tg.showAlert(id ? t('studioUpdated') : t('studioAdded'));
+            }
+        });
+
+        document.getElementById('sessionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            tg.HapticFeedback.impactOccurred('light');
+            
+            const id = document.getElementById('sessionId').value;
+            const sessionType = document.getElementById('sessionType').value;
+            const numClients = sessionType === 'Individual' ? 1 : parseInt(document.getElementById('sessionClients').value);
+            
+            if (id) {
+                const data = {
+                    studioId: parseInt(document.getElementById('sessionStudio').value),
+                    date: document.getElementById('sessionDate').value,
+                    time: document.getElementById('sessionTime').value,
+                    sessionType
+                };
+                
+                const response = await fetch(`/api/sessions/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    closeSessionModal();
+                    await loadData();
+                    tg.showAlert(t('sessionUpdated'));
+                }
+            } else {
+                const tgUser = tg.initDataUnsafe?.user;
+                const data = {
+                    studioId: parseInt(document.getElementById('sessionStudio').value),
+                    date: document.getElementById('sessionDate').value,
+                    time: document.getElementById('sessionTime').value,
+                    duration: 60,
+                    capacity: Math.max(numClients, 10),
+                    coachName: tgUser?.first_name || 'Coach',
+                    sessionType
+                };
+                
+                const response = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    const session = await response.json();
+                    for (let i = 1; i <= numClients; i++) {
+                        await fetch(`/api/sessions/${session.id}/attendees`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: `Client ${i}` })
+                        });
+                    }
+                    closeSessionModal();
+                    await loadData();
+                    tg.showAlert(t('sessionAdded'));
+                }
+            }
+        });
+
+        async function markPaid(id) {
+            tg.HapticFeedback.impactOccurred('medium');
+            if (confirm(t('markPaidConfirm'))) {
+                await fetch(`/api/sessions/${id}/mark-paid`, { method: 'PUT' });
+                await loadData();
+                tg.showAlert(t('markedPaid'));
+            }
+        }
+
+        async function deleteSession(id) {
+            tg.HapticFeedback.impactOccurred('heavy');
+            if (confirm(t('confirmDelete'))) {
+                const response = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    await loadData();
+                    tg.showAlert(t('sessionDeleted'));
+                }
+            }
+        }
+
+        async function deleteStudio(id, name) {
+            tg.HapticFeedback.impactOccurred('heavy');
+            if (confirm(`${t('confirmDeleteStudio')} "${name}"?`)) {
+                const response = await fetch(`/api/studios/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (response.ok) {
+                    await loadData();
+                    tg.showAlert(t('studioDeleted'));
+                } else {
+                    tg.showAlert('Error: ' + result.error);
+                }
+            }
+        }
+
+        async function applyFilters() {
+            tg.HapticFeedback.impactOccurred('light');
+            const studioId = document.getElementById('filterStudio').value;
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+
+            let url = '/api/stats/filtered?';
+            const params = [];
+            if (studioId) params.push(`studioId=${studioId}`);
+            if (dateFrom) params.push(`dateFrom=${dateFrom}`);
+            if (dateTo) params.push(`dateTo=${dateTo}`);
+            url += params.join('&');
+
+            const response = await fetch(url);
+            filteredStats = await response.json();
+            renderFilteredStats();
+        }
+
+        function renderFilteredStats() {
+            document.getElementById('filteredStats').innerHTML = `
+                <div class="stat-card"><div class="stat-value">${filteredStats.totalSessions || 0}</div><div class="stat-label">${t('statSessions')}</div></div>
+                <div class="stat-card"><div class="stat-value">₾${filteredStats.paidRevenue || 0}</div><div class="stat-label">${t('statPaid')}</div></div>
+                <div class="stat-card"><div class="stat-value">₾${filteredStats.pendingRevenue || 0}</div><div class="stat-label">${t('statPending')}</div></div>
+                <div class="stat-card"><div class="stat-value">${filteredStats.totalAttendees || 0}</div><div class="stat-label">${t('statClients')}</div></div>
+                <div class="stat-card"><div class="stat-value">${filteredStats.groupSessions || 0}</div><div class="stat-label">${t('statGroup')}</div></div>
+                <div class="stat-card"><div class="stat-value">${filteredStats.individualSessions || 0}</div><div class="stat-label">${t('statIndividual')}</div></div>
+            `;
+
+            const list = document.getElementById('filteredSessionsList');
+            if (filteredStats.sessions && filteredStats.sessions.length > 0) {
+                list.innerHTML = `<div class="card"><h2 class="section-title">${t('filteredSessions')}</h2>` + 
+                    filteredStats.sessions.map(s => {
+                        const isGroup = s.sessionType === 'Group';
+                        return `<div class="session-item">
+                            <div class="session-header">
+                                <div>
+                                    <div class="session-title">${isGroup ? t('optionGroup') : t('optionIndividual')}</div>
+                                    <span class="badge ${isGroup ? 'badge-group' : 'badge-individual'}">${isGroup ? '👥' : '👤'}</span>
+                                    <span class="badge ${s.paid ? 'badge-success' : 'badge-warning'}">${s.paid ? '✓' : '⏳'}</span>
+                                </div>
+                                <div class="session-amount">₾${s.payment}</div>
+                            </div>
+                            <div class="session-info">${s.date} • ${s.studioName} • ${s.attendees.length} ${t('clients')}</div>
+                        </div>`;
+                    }).join('') + '</div>';
+            } else {
+                list.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-state-icon">📊</div><p>${t('noMatchingSessions')}</p></div></div>`;
+            }
+        }
+
+        tg.BackButton.onClick(() => {
+            if (document.querySelector('.modal.active')) {
+                closeStudioModal();
+                closeSessionModal();
+            } else {
+                tg.close();
+            }
+        });
+
+        detectLanguage();
+        loadData();
+    </script>
+</body>
+</html>
