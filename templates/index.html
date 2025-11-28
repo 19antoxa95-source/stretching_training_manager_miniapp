@@ -528,7 +528,7 @@
                 </div>
                 <div class="action-buttons">
                     <button class="icon-btn" onclick="openEditStudio(${s.id})">${t('btnEdit')}</button>
-                    <button class="icon-btn danger" onclick="deleteStudio(${s.id}, '${s.name.replace(/'/g, "\\'")}')>${t('btnDelete')}</button>
+                    <button class="icon-btn danger" onclick="deleteStudio(${s.id}, '${s.name.replace(/'/g, "\\'")}')">${t('btnDelete')}</button>
                 </div>
             </div>`).join('');
         }
